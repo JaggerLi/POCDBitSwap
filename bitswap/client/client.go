@@ -3,8 +3,14 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"github.com/consensys/gnark/backend/groth16"
+	witness "github.com/consensys/gnark/backend/witness"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"os"
 	"sync"
 	"time"
 
@@ -242,6 +248,9 @@ type Client struct {
 
 	// dupMetric will stay at 0
 	skipDuplicatedBlocksStats bool
+
+	privkey crypto.PrivKey
+	pubkey  crypto.PubKey
 }
 
 type counters struct {
@@ -307,15 +316,68 @@ func (bs *Client) NotifyNewBlocks(ctx context.Context, blks ...blocks.Block) err
 	return nil
 }
 
+func (bs *Client) verifyProof(proof groth16.Proof, vk groth16.VerifyingKey, witness witness.Witness) error {
+	return groth16.Verify(proof, vk, witness)
+}
+
 // receiveBlocksFrom process blocks received from the network
-func (bs *Client) receiveBlocksFrom(ctx context.Context, from peer.ID, blks []blocks.Block, haves []cid.Cid, dontHaves []cid.Cid) error {
+func (bs *Client) receiveBlocksFrom(ctx context.Context, from peer.ID, blks []blocks.MyBlock, haves []cid.Cid, dontHaves []cid.Cid) error {
 	select {
 	case <-bs.process.Closing():
 		return errors.New("bitswap is closed")
 	default:
 	}
+	var confirmMsg map[cid.Cid][]byte
+	//check all proof in blocks. If one of them is invalid, shut down bitswap. This logic is naive one that we can make more complicated in future
+	for _, block := range blks {
+		if len(block.Proof()) == 0 {
+			fmt.Println("block proof is empty, shutting down bitswap")
+			os.Exit(1)
+		}
+		reader := bytes.NewReader(block.Proof())
+		var proof groth16.Proof
+		_, err := groth16.Proof.ReadFrom(proof, reader)
 
-	wanted, notWanted := bs.sim.SplitWantedUnwanted(blks)
+		if err != nil {
+			fmt.Println("error reading proof from block")
+			os.Exit(1)
+		}
+
+		//todo: get actual verifying key and witness
+		var vk groth16.VerifyingKey
+		var witness witness.Witness
+
+		bs.verifyProof(proof, vk, witness)
+
+		var msg []byte
+		msg = append(msg, []byte("received")...)
+		msg = append(msg, block.Key()...)
+		sig, err := bs.privkey.Sign(msg)
+		if err != nil {
+			fmt.Println("error signing message")
+			os.Exit(1)
+		}
+		msg = append(msg, sig...)
+		pubKeyRaw, err := bs.pubkey.Raw()
+		if err != nil {
+			fmt.Println("error getting pubkey raw")
+			os.Exit(1)
+		}
+
+		confirmMsg[block.Cid()] = append(msg, pubKeyRaw...)
+		if err != nil {
+			fmt.Println("error signing message")
+			os.Exit(1)
+		}
+	}
+	bs.sm.SendConfirm(confirmMsg)
+
+	nblks := make([]blocks.Block, len(blks))
+	for i, b := range nblks {
+		nblks[i] = blocks.Block(b)
+	}
+
+	wanted, notWanted := bs.sim.SplitWantedUnwanted(nblks)
 	for _, b := range notWanted {
 		log.Debugf("[recv] block not in wantlist; cid=%s, peer=%s", b.Cid(), from)
 	}
@@ -385,7 +447,7 @@ func (bs *Client) ReceiveMessage(ctx context.Context, p peer.ID, incoming bsmsg.
 	}
 }
 
-func (bs *Client) updateReceiveCounters(blocks []blocks.Block) {
+func (bs *Client) updateReceiveCounters(blocks []blocks.MyBlock) {
 	// Check which blocks are in the datastore
 	// (Note: any errors from the blockstore are simply logged out in
 	// blockstoreHas())
@@ -418,7 +480,7 @@ func (bs *Client) updateReceiveCounters(blocks []blocks.Block) {
 	}
 }
 
-func (bs *Client) blockstoreHas(blks []blocks.Block) []bool {
+func (bs *Client) blockstoreHas(blks []blocks.MyBlock) []bool {
 	res := make([]bool, len(blks))
 
 	wg := sync.WaitGroup{}

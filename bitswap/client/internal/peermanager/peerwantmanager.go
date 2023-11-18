@@ -229,6 +229,18 @@ func (pwm *peerWantManager) sendWants(p peer.ID, wantBlocks []cid.Cid, wantHaves
 	pws.peerQueue.AddWants(fltWantBlks, fltWantHvs)
 }
 
+func (pwm *peerWantManager) sendConfirm(msg map[cid.Cid][]byte) {
+	for c, data := range msg {
+		for p := range pwm.wantPeers[c] {
+			pws, ok := pwm.peerWants[p]
+			if !ok {
+				continue
+			}
+			pws.peerQueue.AddConfirm(c, data)
+		}
+	}
+}
+
 // sendCancels sends a cancel to each peer to which a corresponding want was
 // sent
 func (pwm *peerWantManager) sendCancels(cancelKs []cid.Cid) {

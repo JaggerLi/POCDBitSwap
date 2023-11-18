@@ -25,7 +25,7 @@ type BitSwapMessage interface {
 	Wantlist() []Entry
 
 	// Blocks returns a slice of unique blocks.
-	Blocks() []blocks.Block
+	Blocks() []blocks.MyBlock
 	// BlockPresences returns the list of HAVE / DONT_HAVE in the message
 	BlockPresences() []BlockPresence
 	// Haves returns the Cids for each HAVE
@@ -39,6 +39,8 @@ type BitSwapMessage interface {
 
 	// AddEntry adds an entry to the Wantlist.
 	AddEntry(key cid.Cid, priority int32, wantType pb.Message_Wantlist_WantType, sendDontHave bool) int
+
+	AddEntryConfirm(key cid.Cid, priority int32, wantType pb.Message_Wantlist_WantType, sendDontHave bool, confirmMsg []byte) int
 
 	// Cancel adds a CANCEL for the given CID to the message
 	// Returns the size of the CANCEL entry in the protobuf
@@ -57,7 +59,7 @@ type BitSwapMessage interface {
 	Full() bool
 
 	// AddBlock adds a block to the message
-	AddBlock(blocks.Block)
+	AddBlock(block blocks.MyBlock)
 	// AddBlockPresence adds a HAVE / DONT_HAVE for the given Cid to the message
 	AddBlockPresence(cid.Cid, pb.Message_BlockPresenceType)
 	// AddHave adds a HAVE for the given Cid to the message
@@ -104,6 +106,7 @@ type Entry struct {
 	wantlist.Entry
 	Cancel       bool
 	SendDontHave bool
+	ConfirmMsg   []byte `default:"0"`
 }
 
 // Get the size of the entry on the wire
@@ -144,7 +147,7 @@ func maxEntrySize() int {
 type impl struct {
 	full           bool
 	wantlist       map[cid.Cid]*Entry
-	blocks         map[cid.Cid]blocks.Block
+	blocks         map[cid.Cid]blocks.MyBlock
 	blockPresences map[cid.Cid]pb.Message_BlockPresenceType
 	pendingBytes   int32
 }
@@ -158,7 +161,7 @@ func newMsg(full bool) *impl {
 	return &impl{
 		full:           full,
 		wantlist:       make(map[cid.Cid]*Entry),
-		blocks:         make(map[cid.Cid]blocks.Block),
+		blocks:         make(map[cid.Cid]blocks.MyBlock),
 		blockPresences: make(map[cid.Cid]pb.Message_BlockPresenceType),
 	}
 }
@@ -260,13 +263,21 @@ func (m *impl) Wantlist() []Entry {
 	return out
 }
 
-func (m *impl) Blocks() []blocks.Block {
-	bs := make([]blocks.Block, 0, len(m.blocks))
+func (m *impl) Blocks() []blocks.MyBlock {
+	bs := make([]blocks.MyBlock, 0, len(m.blocks))
 	for _, block := range m.blocks {
 		bs = append(bs, block)
 	}
 	return bs
 }
+
+//func (m *impl) NewBlocks() []blocks.MyBlock{
+//	bs := make([]blocks.MyBlock, 0, len(m.blocks))
+//	for _, block := range m.blocks {
+//		bs = append(bs, block)
+//	}
+//	return bs
+//}
 
 func (m *impl) BlockPresences() []BlockPresence {
 	bps := make([]BlockPresence, 0, len(m.blockPresences))
@@ -314,9 +325,13 @@ func (m *impl) AddEntry(k cid.Cid, priority int32, wantType pb.Message_Wantlist_
 	return m.addEntry(k, priority, false, wantType, sendDontHave)
 }
 
-func (m *impl) addEntry(c cid.Cid, priority int32, cancel bool, wantType pb.Message_Wantlist_WantType, sendDontHave bool) int {
+func (m *impl) AddEntryConfirm(k cid.Cid, priority int32, wantType pb.Message_Wantlist_WantType, sendDontHave bool, confirmMsg []byte) int {
+	return m.addEntry(k, priority, false, pb.Message_Wantlist_Block, false, confirmMsg...)
+}
+
+func (m *impl) addEntry(c cid.Cid, priority int32, cancel bool, wantType pb.Message_Wantlist_WantType, sendDontHave bool, confirm ...byte) int {
 	e, exists := m.wantlist[c]
-	if exists {
+	if exists && len(confirm) == 0 {
 		// Only change priority if want is of the same type
 		if e.WantType == wantType {
 			e.Priority = priority
@@ -337,21 +352,34 @@ func (m *impl) addEntry(c cid.Cid, priority int32, cancel bool, wantType pb.Mess
 		return 0
 	}
 
-	e = &Entry{
-		Entry: wantlist.Entry{
-			Cid:      c,
-			Priority: priority,
-			WantType: wantType,
-		},
-		SendDontHave: sendDontHave,
-		Cancel:       cancel,
+	if len(confirm) > 0 {
+		e = &Entry{
+			Entry: wantlist.Entry{
+				Cid:      c,
+				Priority: priority,
+				WantType: wantType,
+			},
+			SendDontHave: sendDontHave,
+			Cancel:       cancel,
+			ConfirmMsg:   confirm[:],
+		}
+	} else {
+		e = &Entry{
+			Entry: wantlist.Entry{
+				Cid:      c,
+				Priority: priority,
+				WantType: wantType,
+			},
+			SendDontHave: sendDontHave,
+			Cancel:       cancel,
+		}
 	}
 	m.wantlist[c] = e
 
 	return e.Size()
 }
 
-func (m *impl) AddBlock(b blocks.Block) {
+func (m *impl) AddBlock(b blocks.MyBlock) {
 	delete(m.blockPresences, b.Cid())
 	m.blocks[b.Cid()] = b
 }

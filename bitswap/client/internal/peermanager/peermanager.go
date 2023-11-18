@@ -21,6 +21,7 @@ type PeerQueue interface {
 	ResponseReceived(ks []cid.Cid)
 	Startup()
 	Shutdown()
+	AddConfirm(cid.Cid, []byte)
 }
 
 type Session interface {
@@ -160,6 +161,13 @@ func (pm *PeerManager) SendCancels(ctx context.Context, cancelKs []cid.Cid) {
 
 	// Send a CANCEL to each peer that has been sent a want-block or want-have
 	pm.pwm.sendCancels(cancelKs)
+}
+
+func (pm *PeerManager) SendConfirm(msg map[cid.Cid][]byte) {
+	pm.pqLk.Lock()
+	defer pm.pqLk.Unlock()
+
+	pm.pwm.sendConfirm(msg)
 }
 
 // CurrentWants returns the list of pending wants (both want-haves and want-blocks).

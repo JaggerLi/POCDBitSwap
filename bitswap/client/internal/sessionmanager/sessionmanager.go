@@ -176,6 +176,10 @@ func (sm *SessionManager) ReceiveFrom(ctx context.Context, p peer.ID, blks []cid
 	sm.peerManager.SendCancels(ctx, blks)
 }
 
+func (sm *SessionManager) SendConfirm(msg map[cid.Cid][]byte) {
+	sm.peerManager.SendConfirm(msg)
+}
+
 // CancelSessionWants is called when a session cancels wants because a call to
 // GetBlocks() is cancelled
 func (sm *SessionManager) CancelSessionWants(sesid uint64, wants []cid.Cid) {

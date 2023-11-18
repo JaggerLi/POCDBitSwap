@@ -85,11 +85,12 @@ type MessageQueue struct {
 	responses chan []cid.Cid
 
 	// Take lock whenever any of these variables are modified
-	wllock    sync.Mutex
-	bcstWants recallWantlist
-	peerWants recallWantlist
-	cancels   *cid.Set
-	priority  int32
+	wllock     sync.Mutex
+	bcstWants  recallWantlist
+	peerWants  recallWantlist
+	cancels    *cid.Set
+	priority   int32
+	confirmMsg map[cid.Cid][]byte
 
 	// Dont touch any of these variables outside of run loop
 	sender                bsnet.MessageSender
@@ -318,6 +319,13 @@ func (mq *MessageQueue) AddWants(wantBlocks []cid.Cid, wantHaves []cid.Cid) {
 	}
 
 	// Schedule a message send
+	mq.signalWorkReady()
+}
+
+func (mq *MessageQueue) AddConfirm(id cid.Cid, msg []byte) {
+	mq.wllock.Lock()
+	defer mq.wllock.Unlock()
+	mq.confirmMsg[id] = msg
 	mq.signalWorkReady()
 }
 
@@ -738,6 +746,14 @@ func (mq *MessageQueue) extractOutgoingMessage(supportsHave bool) (bsmsg.BitSwap
 		if msgSize >= mq.maxMessageSize {
 			goto FINISH
 		}
+	}
+
+	for c, t := range mq.confirmMsg {
+		msgSize += mq.msg.AddEntryConfirm(c, 0, pb.Message_Wantlist_Block, false, t)
+		if msgSize >= mq.maxMessageSize {
+			goto FINISH
+		}
+
 	}
 
 	// Next, add the wants. If we have too many entries to fit into a single
