@@ -584,7 +584,9 @@ func (e *Engine) nextEnvelope(ctx context.Context) (*Envelope, error) {
 			} else {
 				// Add the block to the message
 				// log.Debugf("  make evlp %s->%s block: %s (%d bytes)", e.self, p, c, len(blk.RawData()))
-				msg.AddBlock(blk)
+				if myBlock, ok := blk.(blocks.MyBlock); ok {
+					msg.AddBlock(myBlock)
+				}
 			}
 		}
 
