@@ -514,6 +514,10 @@ func (e *Engine) taskWorkerExit() {
 	}
 }
 
+func (e *Engine) generateProof(rawData []byte) []byte {
+	return []byte{0x01, 0x02, 0x03}
+}
+
 // nextEnvelope runs in the taskWorker goroutine. Returns an error if the
 // context is cancelled before the next Envelope can be created.
 func (e *Engine) nextEnvelope(ctx context.Context) (*Envelope, error) {
@@ -585,6 +589,8 @@ func (e *Engine) nextEnvelope(ctx context.Context) (*Envelope, error) {
 				// Add the block to the message
 				// log.Debugf("  make evlp %s->%s block: %s (%d bytes)", e.self, p, c, len(blk.RawData()))
 				if myBlock, ok := blk.(blocks.MyBlock); ok {
+					myBlock.SetProof(e.generateProof(myBlock.RawData()))
+					fmt.Printf("Sending Proof:%v\n", myBlock.Proof())
 					msg.AddBlock(myBlock)
 				}
 			}

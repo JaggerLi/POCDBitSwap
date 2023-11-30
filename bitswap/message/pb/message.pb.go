@@ -291,6 +291,9 @@ func (m *Message_Wantlist_Entry) GetSendDontHave() bool {
 type Message_Block struct {
 	Prefix []byte `protobuf:"bytes,1,opt,name=prefix,proto3" json:"prefix,omitempty"`
 	Data   []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Proof   []byte `protobuf:"bytes,3,opt,name=proof,proto3" json:"proof,omitempty"`
+	Signature   []byte `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
+	Key   []byte `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
 }
 
 func (m *Message_Block) Reset()         { *m = Message_Block{} }
@@ -344,6 +347,28 @@ func (m *Message_Block) GetData() []byte {
 	}
 	return nil
 }
+
+func (m *Message_Block) GetProof() []byte {
+    if m != nil {
+        return m.Proof
+    }
+    return nil
+}
+
+func (m *Message_Block) GetSignature() []byte {
+    if m != nil {
+        return m.Signature
+    }
+    return nil
+}
+
+func (m *Message_Block) GetKey() []byte {
+    if m != nil {
+        return m.Key
+    }
+    return nil
+}
+
 
 type Message_BlockPresence struct {
 	Cid  Cid                       `protobuf:"bytes,1,opt,name=cid,proto3,customtype=Cid" json:"cid"`
@@ -647,6 +672,27 @@ func (m *Message_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Key) > 0 {
+        i -= len(m.Key)
+        copy(dAtA[i:], m.Key)
+        i = encodeVarintMessage(dAtA, i, uint64(len(m.Key)))
+        i--
+        dAtA[i] = 0x2a
+    }
+	if len(m.Signature) > 0 {
+        i -= len(m.Signature)
+        copy(dAtA[i:], m.Signature)
+        i = encodeVarintMessage(dAtA, i, uint64(len(m.Signature)))
+        i--
+        dAtA[i] = 0x22
+    }
+	if len(m.Proof) > 0 {
+        i -= len(m.Proof)
+        copy(dAtA[i:], m.Proof)
+        i = encodeVarintMessage(dAtA, i, uint64(len(m.Proof)))
+        i--
+        dAtA[i] = 0x1a
+    }
 	if len(m.Data) > 0 {
 		i -= len(m.Data)
 		copy(dAtA[i:], m.Data)
@@ -798,6 +844,18 @@ func (m *Message_Block) Size() (n int) {
 		n += 1 + l + sovMessage(uint64(l))
 	}
 	l = len(m.Data)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	l = len(m.Proof)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	l = len(m.Signature)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	l = len(m.Key)
 	if l > 0 {
 		n += 1 + l + sovMessage(uint64(l))
 	}
@@ -1391,6 +1449,108 @@ func (m *Message_Block) Unmarshal(dAtA []byte) error {
 			m.Data = append(m.Data[:0], dAtA[iNdEx:postIndex]...)
 			if m.Data == nil {
 				m.Data = []byte{}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Proof", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Proof = append(m.Proof[:0], dAtA[iNdEx:postIndex]...)
+			if m.Proof == nil {
+				m.Proof = []byte{}
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Signature = append(m.Signature[:0], dAtA[iNdEx:postIndex]...)
+			if m.Signature == nil {
+				m.Signature = []byte{}
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
 			}
 			iNdEx = postIndex
 		default:

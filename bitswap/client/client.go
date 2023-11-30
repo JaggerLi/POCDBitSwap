@@ -334,6 +334,7 @@ func (bs *Client) receiveBlocksFrom(ctx context.Context, from peer.ID, blks []bl
 			fmt.Println("block proof is empty, shutting down bitswap")
 			os.Exit(1)
 		}
+		fmt.Printf("Received Proof:%v\n", block.Proof())
 		reader := bytes.NewReader(block.Proof())
 		var proof groth16.Proof
 		_, err := groth16.Proof.ReadFrom(proof, reader)

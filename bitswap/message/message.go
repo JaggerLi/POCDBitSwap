@@ -231,6 +231,9 @@ func newMessageFromProto(pbm pb.Message) (BitSwapMessage, error) {
 		if err != nil {
 			return nil, err
 		}
+		blk.SetProof(b.GetProof())
+		blk.SetSignature(b.GetSignature())
+		blk.SetKey(b.GetKey())
 
 		m.AddBlock(blk)
 	}
@@ -472,8 +475,11 @@ func (m *impl) ToProtoV1() *pb.Message {
 	pbm.Payload = make([]pb.Message_Block, 0, len(blocks))
 	for _, b := range blocks {
 		pbm.Payload = append(pbm.Payload, pb.Message_Block{
-			Data:   b.RawData(),
-			Prefix: b.Cid().Prefix().Bytes(),
+			Data:      b.RawData(),
+			Prefix:    b.Cid().Prefix().Bytes(),
+			Proof:     b.Proof(),
+			Signature: b.Signature(),
+			Key:       b.Key(),
 		})
 	}
 
