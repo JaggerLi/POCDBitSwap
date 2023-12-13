@@ -2,8 +2,14 @@
 package decision
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/ipfs/boxo/bitswap/ZK/pocd"
+
+	//pocd "github.com/JaggerLi/POCD/pocd"
+	"io"
+	"math/big"
 	"math/bits"
 	"sync"
 	"time"
@@ -514,8 +520,18 @@ func (e *Engine) taskWorkerExit() {
 	}
 }
 
-func (e *Engine) generateProof(rawData []byte) []byte {
-	return []byte{0x01, 0x02, 0x03}
+func (e *Engine) generateProof(data pocd.Info) ([]byte, []byte) {
+	//convert proof
+	proof, publicWitness := pocd.GnerateProof(data)
+	var proofBuffer bytes.Buffer
+	var writer io.Writer = &proofBuffer
+	proof.WriteTo(writer)
+	proofBytes := proofBuffer.Bytes()
+
+	//convert witness
+	witnessBytes, _ := publicWitness.MarshalBinary()
+
+	return proofBytes, witnessBytes
 }
 
 // nextEnvelope runs in the taskWorker goroutine. Returns an error if the
@@ -589,8 +605,27 @@ func (e *Engine) nextEnvelope(ctx context.Context) (*Envelope, error) {
 				// Add the block to the message
 				// log.Debugf("  make evlp %s->%s block: %s (%d bytes)", e.self, p, c, len(blk.RawData()))
 				if myBlock, ok := blk.(blocks.MyBlock); ok {
-					myBlock.SetProof(e.generateProof(myBlock.RawData()))
-					fmt.Printf("Sending Proof:%v\n", myBlock.Proof())
+					//Dummy seed, need to change in the future
+					dummySeed := new(big.Int).SetInt64(0)
+
+					encrytedData := pocd.EncryptToBig(myBlock.RawData(), dummySeed)
+					//myBlock.UpdateData(pocd.BigIntsToBytes(encryotedData))
+					//fmt.Println("length:", len(myBlock.RawData()))
+
+					//Pack the info
+					var info pocd.Info
+					info.Seed = dummySeed
+					info.EncData = encrytedData
+					info.RawData = pocd.BytesToBigInts(myBlock.RawData(), 31)
+					myBlock.UpdateData(pocd.BigIntsToBytes(encrytedData, 33))
+
+					Proof, Witness := e.generateProof(info)
+					myBlock.SetProof(Proof)
+					myBlock.SetWitness(Witness)
+					//fmt.Printf("Sending Proof:%v\n", myBlock.Proof())
+					//fmt.Printf("Cid:%v\n", myBlock.Cid())
+					//fmt.Println("length:", len(myBlock.RawData()))
+
 					msg.AddBlock(myBlock)
 				}
 			}

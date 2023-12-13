@@ -6,7 +6,8 @@ require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137
 	github.com/benbjohnson/clock v1.3.5
 	github.com/cespare/xxhash/v2 v2.2.0
-	github.com/consensys/gnark v0.9.1
+	github.com/consensys/gnark v0.8.0
+	github.com/consensys/gnark-crypto v0.9.1
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3
 	github.com/cskr/pubsub v1.0.2
 	github.com/dustin/go-humanize v1.0.0
@@ -15,6 +16,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/golang-lru/v2 v2.0.5
+	github.com/iden3/go-iden3-crypto v0.0.15
 	github.com/ipfs/bbloom v0.0.4
 	github.com/ipfs/go-bitfield v1.1.0
 	github.com/ipfs/go-block-format v0.1.2
@@ -44,6 +46,7 @@ require (
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.0
 	github.com/libp2p/go-libp2p-testing v0.12.0
 	github.com/libp2p/go-msgio v0.3.0
+	github.com/liyue201/gnark-circomlib v0.0.0-20230711065626-381b4d6dc27d
 	github.com/miekg/dns v1.1.55
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-base32 v0.1.0
@@ -80,13 +83,12 @@ require (
 
 //replace github.com/ipfs/go-block-format v0.1.2 => github.com/DYuan22/go-block-format v0.0.0-20231102024438-c184bf1974ed
 replace github.com/ipfs/go-block-format v0.1.2 => ../go-block-format
+
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.8.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
-	github.com/consensys/gnark-crypto v0.12.2-0.20231013160410-1f65e75b6dfb // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

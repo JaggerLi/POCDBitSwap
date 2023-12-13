@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
+	"github.com/ipfs/boxo/bitswap/ZK/pocd"
 	"io"
 	"log"
 	mrand "math/rand"
@@ -66,6 +67,7 @@ func main() {
 
 	if *targetF == "" {
 		c, bs, err := startDataServer(ctx, h)
+		//fmt.Println("Begin", c)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -126,14 +128,24 @@ func getHostAddress(h host.Host) string {
 
 // The CID of the file with the number 0 to 100k, built with the parameters:
 // CIDv1 links, a 256bit sha2-256 hash function, raw-leaves, a balanced layout, 256kiB chunks, and 174 max links per block
-const fileCid = "bafybeiecq2irw4fl5vunnxo6cegoutv4de63h7n27tekkjtak3jrvrzzhe"
+// const fileCid = "bafybeiecq2irw4fl5vunnxo6cegoutv4de63h7n27tekkjtak3jrvrzzhe"
+const fileCid = "bafkreia5xbv6m5xwpp2noon247w3day3fuimwijihbrvrakeki3g6ykdjm"
 
 // createFile0to100k creates a file with the number 0 to 100k
 func createFile0to100k() ([]byte, error) {
 	b := strings.Builder{}
-	for i := 0; i <= 100000; i++ {
+	// large scale 100k file
+	//for i := 0; i <= 100000; i++ {
+	// test scale 10K file
+	for i := 0; i <= 10000; i++ {
 		s := strconv.Itoa(i)
 		_, err := b.WriteString(s)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for i := len([]byte(b.String())); i < pocd.NumVar*31; i++ {
+		_, err := b.WriteString("0")
 		if err != nil {
 			return nil, err
 		}

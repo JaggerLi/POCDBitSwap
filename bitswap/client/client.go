@@ -7,6 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/ipfs/boxo/bitswap/ZK/pocd"
+
+	//"github.com/JaggerLi/POCD/pocd"
 	"github.com/consensys/gnark/backend/groth16"
 	witness "github.com/consensys/gnark/backend/witness"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -316,8 +320,8 @@ func (bs *Client) NotifyNewBlocks(ctx context.Context, blks ...blocks.Block) err
 	return nil
 }
 
-func (bs *Client) verifyProof(proof groth16.Proof, vk groth16.VerifyingKey, witness witness.Witness) error {
-	return groth16.Verify(proof, vk, witness)
+func (bs *Client) verifyProof(proof groth16.Proof, witness witness.Witness) error {
+	return pocd.VerifyProof(proof, witness)
 }
 
 // receiveBlocksFrom process blocks received from the network
@@ -334,10 +338,10 @@ func (bs *Client) receiveBlocksFrom(ctx context.Context, from peer.ID, blks []bl
 			fmt.Println("block proof is empty, shutting down bitswap")
 			os.Exit(1)
 		}
-		fmt.Printf("Received Proof:%v\n", block.Proof())
 		reader := bytes.NewReader(block.Proof())
-		var proof groth16.Proof
-		_, err := groth16.Proof.ReadFrom(proof, reader)
+		//var proof groth16.Proof
+		proof := groth16.NewProof(ecc.BN254)
+		_, err := proof.ReadFrom(reader)
 
 		if err != nil {
 			fmt.Println("error reading proof from block")
@@ -345,42 +349,48 @@ func (bs *Client) receiveBlocksFrom(ctx context.Context, from peer.ID, blks []bl
 		}
 
 		//todo: get actual verifying key and witness
-		var vk groth16.VerifyingKey
-		var witness witness.Witness
+		//var witness witness.Witness
+		witness, _ := witness.New(ecc.BN254.ScalarField())
+		witness.UnmarshalBinary(block.Witness())
 
-		bs.verifyProof(proof, vk, witness)
+		bs.verifyProof(proof, witness)
 
-		var msg []byte
-		msg = append(msg, []byte("received")...)
-		msg = append(msg, block.Key()...)
-		sig, err := bs.privkey.Sign(msg)
-		if err != nil {
-			fmt.Println("error signing message")
-			os.Exit(1)
-		}
-		msg = append(msg, sig...)
-		pubKeyRaw, err := bs.pubkey.Raw()
-		if err != nil {
-			fmt.Println("error getting pubkey raw")
-			os.Exit(1)
-		}
-
-		confirmMsg[block.Cid()] = append(msg, pubKeyRaw...)
-		if err != nil {
-			fmt.Println("error signing message")
-			os.Exit(1)
-		}
+		//var msg []byte
+		//msg = append(msg, []byte("received")...)
+		//msg = append(msg, block.Key()...)
+		//sig, err := bs.privkey.Sign(msg)
+		//if err != nil {
+		//	fmt.Println("error signing message")
+		//	os.Exit(1)
+		//}
+		//msg = append(msg, sig...)
+		//pubKeyRaw, err := bs.pubkey.Raw()
+		//if err != nil {
+		//	fmt.Println("error getting pubkey raw")
+		//	os.Exit(1)
+		//}
+		//
+		//confirmMsg[block.Cid()] = append(msg, pubKeyRaw...)
+		//if err != nil {
+		//	fmt.Println("error signing message")
+		//	os.Exit(1)
+		//}
 	}
 	bs.sm.SendConfirm(confirmMsg)
 
 	nblks := make([]blocks.Block, len(blks))
-	for i, b := range nblks {
+	for i, b := range blks {
 		nblks[i] = blocks.Block(b)
 	}
 
 	wanted, notWanted := bs.sim.SplitWantedUnwanted(nblks)
+	for _, b := range wanted {
+		log.Debugf("[recv] block in wantlist; cid=%s, peer=%s", b.Cid(), from)
+		fmt.Println("block in wantlist; cid=%s, peer=%s", b.Cid(), from)
+	}
 	for _, b := range notWanted {
 		log.Debugf("[recv] block not in wantlist; cid=%s, peer=%s", b.Cid(), from)
+		fmt.Println("block not in wantlist; cid=%s, peer=%s", b.Cid(), from)
 	}
 
 	allKs := make([]cid.Cid, 0, len(blks))
@@ -487,7 +497,7 @@ func (bs *Client) blockstoreHas(blks []blocks.MyBlock) []bool {
 	wg := sync.WaitGroup{}
 	for i, block := range blks {
 		wg.Add(1)
-		go func(i int, b blocks.Block) {
+		go func(i int, b blocks.MyBlock) {
 			defer wg.Done()
 
 			has, err := bs.blockstore.Has(context.TODO(), b.Cid())

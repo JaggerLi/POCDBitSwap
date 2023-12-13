@@ -3,7 +3,9 @@ package message
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/ipfs/boxo/bitswap/ZK/pocd"
 	"io"
+	"math/big"
 
 	"github.com/ipfs/boxo/bitswap/client/wantlist"
 	pb "github.com/ipfs/boxo/bitswap/message/pb"
@@ -222,7 +224,9 @@ func newMessageFromProto(pbm pb.Message) (BitSwapMessage, error) {
 			return nil, err
 		}
 
-		c, err := pref.Sum(b.GetData())
+		//TODO: need to add on chain validation. But skip it for now.
+		dummySeed := new(big.Int).SetInt64(0)
+		c, err := pref.Sum(pocd.Decrypt(b.GetData(), dummySeed))
 		if err != nil {
 			return nil, err
 		}
